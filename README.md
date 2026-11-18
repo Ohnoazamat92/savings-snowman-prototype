@@ -13,7 +13,7 @@ npm ci
 npm run dev -- --host 127.0.0.1
 ```
 
-Проверка: `node --test tests/snowfall.test.mjs tests/pet-physics.test.mjs`. Сборка: `npm run build`.
+Проверка: `node --test tests/snowfall.test.mjs tests/pet-physics.test.mjs tests/pet-drag.test.mjs`. Сборка: `npm run build`.
 
 GitHub Pages публикует папку `docs` ветки `main`. Для обновления сайта скопируйте содержимое `dist/client/` в `docs/`, сохраните `.nojekyll` и отправьте коммит.
 
@@ -21,4 +21,4 @@ GitHub Pages публикует папку `docs` ветки `main`. Для об
 
 ## Звуки
 
-Мягкий тап и звон санных бубенцов при начале снега взяты из свободных библиотек Kenney и BrianJamesLong (CC0). Оба уровня громкости повышены на 30%. Источники и обработка: [SOURCES.md](public/assets/audio/SOURCES.md). Кнопка динамика отключает звук и сохраняет выбор. Наведение беззвучно. Проверка управления аудио: `node --test tests/pet-audio.test.mjs`.
+Тап — писк резиновой игрушки, захват — короткий более высокий писк, отпускание — мягкий «пух». Звук отпускания срабатывает сразу и не дублируется при посадке. Источники yodaman170 и saangosu (CC0). Санными бубенцами при начале снега остаётся запись BrianJamesLong (CC0). Оба уровня громкости повышены на 30%. Источники и обработка: [SOURCES.md](public/assets/audio/SOURCES.md). Кнопка динамика отключает звук и сохраняет выбор. Наведение беззвучно. Проверка управления аудио: `node --test tests/pet-audio.test.mjs`.

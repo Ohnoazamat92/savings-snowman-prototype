@@ -62,4 +62,27 @@ test('Звук активируется тапом, синхронизирует
   await settle();
   assert.equal(starts.length, 2);
   delayed.dispose();
+
+  globalThis.AudioContext.prototype.resume = function () { this.state = 'running'; return Promise.resolve(); };
+  const gestures = createPetAudio('./');
+  gestures.prepare();
+  await settle();
+  assert.equal(starts.length, 2, 'Нажатие только разблокирует аудио, без лишнего звука');
+  gestures.grab();
+  await settle();
+  assert.equal(starts.length, 3, 'Захват звучит без предварительного тапа');
+  const beforeRelease = stopped;
+  gestures.release();
+  await settle();
+  assert.equal(starts.length, 4);
+  assert.equal(stopped, beforeRelease + 1, 'Отпускание заменяет звук захвата');
+  gestures.setMuted(true);
+  gestures.prepare(); gestures.grab(); gestures.release();
+  await settle();
+  assert.equal(starts.length, 4, 'Отключение звука действует на оба новых жеста');
+  gestures.setMuted(false);
+  gestures.grab(); gestures.stop();
+  await settle();
+  assert.equal(starts.length, 4, 'Отмена жеста не оставляет отложенный звук');
+  gestures.dispose();
 });

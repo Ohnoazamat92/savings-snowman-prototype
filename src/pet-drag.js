@@ -1,4 +1,4 @@
-import { PetPhysics } from './pet-physics';
+import { PetPhysics } from './pet-physics.js';
 
 export function attachPetDrag(dock, button, callbacks) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -47,6 +47,7 @@ export function attachPetDrag(dock, button, callbacks) {
   }
   function down(event) {
     if (!event.isPrimary || event.button !== 0 || pointer) return;
+    callbacks.press();
     skipClick = false;
     const catching = body.phase === 'flying';
     cancelAnimationFrame(frame);
@@ -80,6 +81,7 @@ export function attachPetDrag(dock, button, callbacks) {
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
     if (!current.dragging) return;
     skipClick = true;
+    callbacks.release();
     const first = current.samples[0], last = current.samples.at(-1);
     const dt = (last.t - first.t) / 1000;
     const fresh = event.timeStamp - last.t < 100 && dt > 0.008;

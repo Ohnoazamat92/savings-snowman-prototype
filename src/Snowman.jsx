@@ -34,12 +34,12 @@ export function Snowman() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
-  function clear(preserveFrame = false) {
+  function clear(preserveFrame = false, preserveAudio = false) {
     const r = runtime.current;
     r.token++;
     r.mode = null;
     clearTimeout(r.timer);
-    audio.current?.stop();
+    if (!preserveAudio) audio.current?.stop();
     if (r.url) {
       if (preserveFrame) r.retired.add(r.url);
       else URL.revokeObjectURL(r.url);
@@ -82,7 +82,9 @@ export function Snowman() {
   };
   useEffect(() => {
     drag.current = attachPetDrag(dock.current, button.current, {
+      press: () => audio.current?.prepare(),
       grab: () => dragCallbacks.current.grab(),
+      release: () => audio.current?.release(),
       land: () => dragCallbacks.current.land(),
       cancel: () => dragCallbacks.current.cancel(),
     });
@@ -104,7 +106,8 @@ export function Snowman() {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (mode !== 'gesture' && (r.mode === 'tap' || r.mode === 'gesture' || (mode === 'hover' && (r.mode || reduced)))) return;
     // Тап прерывает только фоновое моргание. Повторные тапы не создают очередь.
-    clear(mode === 'gesture');
+    // «Пух» звучит при отпускании; начало посадки не должно его обрывать.
+    clear(mode === 'gesture', gestureReaction?.name === 'landing');
     setOutgoing(mode === 'gesture' ? (clip?.ready ? clip : outgoing) : null);
     setClip(null);
     const token = r.token;
@@ -112,6 +115,7 @@ export function Snowman() {
     const reaction = gestureReaction ?? (mode === 'hover' ? reactions[1] : reactions[r.next]);
     setBusy(mode !== 'hover');
     if (mode === 'tap') audio.current?.tap();
+    if (reaction.name === 'held') audio.current?.grab();
 
     if (reduced) {
       if (mode === 'tap') r.next = (r.next + 1) % reactions.length;
