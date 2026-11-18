@@ -33,7 +33,7 @@ test('Звук активируется тапом, синхронизирует
   audio.snow(false);
   await settle();
   assert.ok(starts[1] > 10.65 && starts[1] <= 10.7, 'Звон запланирован к первым снежинкам');
-  assert.deepEqual(gains.map(gain => gain.value), [0.416, 0.52], 'Оба уровня повышены на 30%');
+  assert.deepEqual(gains.map(gain => gain.value), [0.32, 0.52], 'У тапа исходная громкость, у снега сохранён текущий уровень');
   audio.setMuted(true);
   assert.equal(stopped, 2, 'Mute останавливает и уже запланированный звук');
   audio.tap();
