@@ -2,7 +2,7 @@ import fragmentSource from './snow.frag?raw';
 
 import { snowTimeline } from './snowfall-timeline.js';
 
-export function startSnowfall(canvas, origin, reduced, complete) {
+export function startSnowfall(canvas, origin, reduced, complete, started = () => {}) {
   const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
   if (!gl) { complete(); return () => {}; }
   const shaders = [];
@@ -47,7 +47,7 @@ export function startSnowfall(canvas, origin, reduced, complete) {
     let start;
     function draw(now) {
       if (stopped) return;
-      start ??= now;
+      if (start === undefined) { start = now; started(); }
       const elapsed = (now - start) / 1000;
       const timeline = snowTimeline(elapsed, reduced);
       if (timeline.finished) { stop(); complete(); return; }

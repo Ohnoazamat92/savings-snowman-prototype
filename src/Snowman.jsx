@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { startSnowfall } from './snowfall';
+import { createPetAudio } from './pet-audio';
 
 const reactions = [
   { name: 'wave', label: 'Приветствие', duration: 4000 },
@@ -12,12 +13,16 @@ const reactions = [
 
 function Snow({ scene }) {
   const canvas = useRef(null);
-  useEffect(() => startSnowfall(canvas.current, scene.origin, scene.reduced, scene.complete), [scene]);
+  useEffect(() => startSnowfall(canvas.current, scene.origin, scene.reduced, scene.complete, scene.started), [scene]);
   return <canvas ref={canvas} className="snowfall" aria-hidden="true" />;
 }
 
 export function Snowman() {
   const button = useRef(null);
+  const audio = useRef(null);
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem('snowman-muted') === 'true'; } catch { return false; }
+  });
   const runtime = useRef({ token: 0, next: 0, mode: null, timer: 0, url: null, blobs: new Map() });
   const [clip, setClip] = useState(null);
   const [snow, setSnow] = useState(null);
@@ -29,6 +34,7 @@ export function Snowman() {
     r.token++;
     r.mode = null;
     clearTimeout(r.timer);
+    audio.current?.stop();
     if (r.url) URL.revokeObjectURL(r.url);
     r.url = null;
   }
@@ -43,6 +49,9 @@ export function Snowman() {
   }
 
   useEffect(() => {
+    const sound = createPetAudio(import.meta.env.BASE_URL);
+    sound.setMuted(muted);
+    audio.current = sound;
     const preference = matchMedia('(prefers-reduced-motion: reduce)');
     const cancel = () => finish(runtime.current.token);
     const hidden = () => { if (document.hidden) cancel(); };
@@ -50,6 +59,7 @@ export function Snowman() {
     document.addEventListener('visibilitychange', hidden);
     return () => {
       clear();
+      sound.dispose();
       preference.removeEventListener('change', cancel);
       document.removeEventListener('visibilitychange', hidden);
     };
@@ -60,6 +70,7 @@ export function Snowman() {
     setSnow({
       origin: { x: (rect.x + rect.width / 2) / innerWidth, y: (rect.y + rect.height / 3) / innerHeight },
       reduced,
+      started: () => { if (runtime.current.token === token) audio.current?.snow(reduced); },
       complete: () => finish(token),
     });
   }
@@ -75,6 +86,7 @@ export function Snowman() {
     r.mode = mode;
     const reaction = mode === 'hover' ? reactions[1] : reactions[r.next];
     setBusy(mode === 'tap');
+    if (mode === 'tap') audio.current?.tap();
 
     if (reduced) {
       r.next = (r.next + 1) % reactions.length;
@@ -133,6 +145,19 @@ export function Snowman() {
       {clip && <img key={clip.token} className="snowman-clip" src={clip.url} alt="" draggable="false"
         style={{ visibility: clip.ready ? 'visible' : 'hidden' }} onLoad={loaded}
         onError={() => { finish(clip.token); setStatus('Не удалось открыть эмоцию. Нажмите ещё раз.'); }} />}
+    </button>
+    <button type="button" className="snowman-sound" aria-label="Выключить звук"
+      aria-pressed={muted} title={muted ? 'Включить звук' : 'Выключить звук'}
+      onClick={() => {
+        const next = !muted;
+        audio.current?.setMuted(next);
+        setMuted(next);
+        try { localStorage.setItem('snowman-muted', String(next)); } catch { /* Выбор действует до перезагрузки. */ }
+      }}>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+        {muted ? <path d="m16 9 5 6m0-6-5 6" /> : <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></>}
+      </svg>
     </button>
     <span className="snowman-status" role="status">{status}</span>
   </>;
