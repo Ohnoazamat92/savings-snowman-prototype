@@ -7,13 +7,7 @@
 - Автор: Kenney, [Interface Sounds](https://kenney.nl/assets/interface-sounds).
 - Исходник: `Audio/bong_001.ogg`. Лицензия CC0, оригинал в `KENNEY-LICENSE.txt`.
 - Восстановлен точный файл из первой опубликованной версии `ad74880`: фильтр верхних частот, короткое затухание, моно PCM WAV 44,1 кГц, 120 мс.
-- Восстановлена первоначальная громкость приложения 0,32.
-
-## soft-grab.wav
-
-- Автор: Kenney, [Interface Sounds](https://kenney.nl/assets/interface-sounds).
-- Лицензия CC0; оригинал в `KENNEY-LICENSE.txt`.
-- Исходник `Audio/pluck_002.ogg`: скорость/высота ×0,9, фильтры 120–1800 Гц, вход 8 мс, затухание с 90 мс. Моно PCM WAV 44,1 кГц, 180 мс, пик 0,55; gain 0,416.
+- Тап и захват используют этот же файл с одинаковой первоначальной громкостью 0,32.
 
 ## release.wav
 
