@@ -7,7 +7,7 @@ export function createPetAudio(baseURL) {
   let muted = false;
   let generation = 0;
   let disposed = false;
-  const files = Object.fromEntries(['toy-tap', 'grab', 'release', 'sleigh-bells'].map(name => [name,
+  const files = Object.fromEntries(['soft-tap', 'soft-grab', 'release', 'sleigh-bells'].map(name => [name,
     fetch(`${baseURL}assets/audio/${name}.wav`, { signal: controller.signal })
       .then(response => { if (!response.ok) throw new Error('Audio unavailable'); return response.arrayBuffer(); })
       .catch(() => null),
@@ -53,8 +53,8 @@ export function createPetAudio(baseURL) {
 
   return {
     prepare() { void unlock(); },
-    tap() { const ready = unlock(); void play('toy-tap', 0, 0.416, ready); },
-    grab() { const ready = unlock(); void play('grab', 0, 0.416, ready); },
+    tap() { const ready = unlock(); void play('soft-tap', 0, 0.416, ready); },
+    grab() { const ready = unlock(); void play('soft-grab', 0, 0.416, ready); },
     release() { stop(); const ready = unlock(); void play('release', 0, 0.416, ready); },
     snow(reduced) { void play('sleigh-bells', reduced ? 0 : 0.7, 0.52, Promise.resolve(context?.state === 'running')); },
     setMuted(value) { muted = value; if (muted) stop(); },
