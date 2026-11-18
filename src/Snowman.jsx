@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { startSnowfall } from './snowfall';
 import { createPetAudio } from './pet-audio';
+import { attachPetDrag } from './pet-drag';
 
 const reactions = [
   { name: 'wave', label: 'Приветствие', duration: 4000 },
@@ -19,23 +20,31 @@ function Snow({ scene }) {
 
 export function Snowman() {
   const button = useRef(null);
+  const dock = useRef(null);
+  const drag = useRef(null);
+  const dragCallbacks = useRef(null);
   const audio = useRef(null);
   const [muted, setMuted] = useState(() => {
     try { return localStorage.getItem('snowman-muted') === 'true'; } catch { return false; }
   });
-  const runtime = useRef({ token: 0, next: 0, mode: null, timer: 0, url: null, blobs: new Map() });
+  const runtime = useRef({ token: 0, next: 0, mode: null, timer: 0, url: null, blobs: new Map(), retired: new Set() });
   const [clip, setClip] = useState(null);
+  const [outgoing, setOutgoing] = useState(null);
   const [snow, setSnow] = useState(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
-  function clear() {
+  function clear(preserveFrame = false) {
     const r = runtime.current;
     r.token++;
     r.mode = null;
     clearTimeout(r.timer);
     audio.current?.stop();
-    if (r.url) URL.revokeObjectURL(r.url);
+    if (r.url) {
+      if (preserveFrame) r.retired.add(r.url);
+      else URL.revokeObjectURL(r.url);
+    }
+    if (!preserveFrame) { r.retired.forEach(url => URL.revokeObjectURL(url)); r.retired.clear(); }
     r.url = null;
   }
 
@@ -43,6 +52,7 @@ export function Snowman() {
     if (runtime.current.token !== token) return;
     clear();
     setClip(null);
+    setOutgoing(null);
     setSnow(null);
     setBusy(false);
     setStatus('');
@@ -65,6 +75,20 @@ export function Snowman() {
     };
   }, []);
 
+  dragCallbacks.current = {
+    grab: () => { setSnow(null); void play('gesture', { name: 'held', label: 'Удержание', loop: true }); },
+    land: () => void play('gesture', { name: 'landing', label: 'Посадка', duration: 2000 }),
+    cancel: () => finish(runtime.current.token),
+  };
+  useEffect(() => {
+    drag.current = attachPetDrag(dock.current, button.current, {
+      grab: () => dragCallbacks.current.grab(),
+      land: () => dragCallbacks.current.land(),
+      cancel: () => dragCallbacks.current.cancel(),
+    });
+    return () => drag.current.destroy();
+  }, []);
+
   function beginSnow(token, reduced) {
     const rect = button.current.getBoundingClientRect();
     setSnow({
@@ -75,22 +99,25 @@ export function Snowman() {
     });
   }
 
-  async function play(mode) {
+  async function play(mode, gestureReaction) {
     const r = runtime.current;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (r.mode === 'tap' || (mode === 'hover' && (r.mode || reduced))) return;
+    if (mode !== 'gesture' && (r.mode === 'tap' || r.mode === 'gesture' || (mode === 'hover' && (r.mode || reduced)))) return;
     // Тап прерывает только фоновое моргание. Повторные тапы не создают очередь.
-    clear();
+    clear(mode === 'gesture');
+    setOutgoing(mode === 'gesture' ? (clip?.ready ? clip : outgoing) : null);
     setClip(null);
     const token = r.token;
     r.mode = mode;
-    const reaction = mode === 'hover' ? reactions[1] : reactions[r.next];
-    setBusy(mode === 'tap');
+    const reaction = gestureReaction ?? (mode === 'hover' ? reactions[1] : reactions[r.next]);
+    setBusy(mode !== 'hover');
     if (mode === 'tap') audio.current?.tap();
 
     if (reduced) {
-      r.next = (r.next + 1) % reactions.length;
+      if (mode === 'tap') r.next = (r.next + 1) % reactions.length;
       setStatus(reaction.label);
+      if (reaction.loop) return;
+      if (reaction.name === 'landing') drag.current?.landingReady();
       if (reaction.snow) beginSnow(token, true);
       else r.timer = setTimeout(() => finish(token), 300);
       return;
@@ -110,6 +137,7 @@ export function Snowman() {
     } catch (error) {
       if (token !== r.token) return;
       console.error('Не удалось загрузить эмоцию снеговичка', error);
+      if (reaction.name === 'landing') drag.current?.landingReady();
       finish(token);
       setStatus('Не удалось загрузить эмоцию. Нажмите ещё раз.');
     }
@@ -119,11 +147,16 @@ export function Snowman() {
     const r = runtime.current;
     if (!clip || clip.ready || clip.token !== r.token) return;
     setClip({ ...clip, ready: true });
+    setOutgoing(null);
+    r.retired.forEach(url => URL.revokeObjectURL(url));
+    r.retired.clear();
     if (clip.mode === 'tap') {
       r.next = (r.next + 1) % reactions.length;
       setStatus(clip.label);
     }
     if (clip.snow) beginSnow(clip.token, false);
+    if (clip.name === 'landing') drag.current?.landingReady();
+    if (clip.loop) return;
     r.timer = setTimeout(() => {
       if (clip.token !== r.token) return;
       if (clip.snow) setClip(null);
@@ -133,18 +166,23 @@ export function Snowman() {
 
   return <>
     {snow && <Snow scene={snow} />}
+    <div ref={dock} className="snowman-dock">
     <button ref={button} type="button" className="snowman-pet"
       aria-label="Снеговичок: показать следующую эмоцию" aria-busy={busy}
+      aria-describedby="snowman-help"
       data-clip={clip?.name ?? 'poster'} data-mode={runtime.current.mode ?? 'rest'}
       onClick={() => play('tap')}
       onPointerEnter={event => {
         if (event.pointerType === 'mouse' && matchMedia('(hover: hover) and (pointer: fine)').matches) play('hover');
       }}>
+      <span className="snowman-art">
       <img className="snowman-poster" src={`${import.meta.env.BASE_URL}assets/pet/poster.png`} alt="" draggable="false"
-        style={{ visibility: clip?.ready ? 'hidden' : 'visible' }} />
+        style={{ visibility: clip?.ready || outgoing ? 'hidden' : 'visible' }} />
+      {outgoing && !clip?.ready && <img className="snowman-outgoing" src={outgoing.url} alt="" draggable="false" />}
       {clip && <img key={clip.token} className="snowman-clip" src={clip.url} alt="" draggable="false"
         style={{ visibility: clip.ready ? 'visible' : 'hidden' }} onLoad={loaded}
-        onError={() => { finish(clip.token); setStatus('Не удалось открыть эмоцию. Нажмите ещё раз.'); }} />}
+        onError={() => { if (clip.name === 'landing') drag.current?.landingReady(); finish(clip.token); setStatus('Не удалось открыть эмоцию. Нажмите ещё раз.'); }} />}
+      </span>
     </button>
     <button type="button" className="snowman-sound" aria-label="Выключить звук"
       aria-pressed={muted} title={muted ? 'Включить звук' : 'Выключить звук'}
@@ -159,6 +197,8 @@ export function Snowman() {
         {muted ? <path d="m16 9 5 6m0-6-5 6" /> : <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></>}
       </svg>
     </button>
+    </div>
+    <span className="snowman-status" id="snowman-help">Нажмите для эмоции. Зажмите и потяните для переноса. С клавиатуры перемещайте стрелками.</span>
     <span className="snowman-status" role="status">{status}</span>
   </>;
 }

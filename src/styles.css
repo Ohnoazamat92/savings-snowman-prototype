@@ -1,35 +1,49 @@
 /* Исходная вёрстка лендинга остаётся в source.css. */
 #choose-product { scroll-margin-top: 80px; }
 
-.snowman-pet {
+.snowman-dock {
   position: fixed;
   z-index: 1001;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(12px, env(safe-area-inset-bottom));
   width: clamp(160px, 18vw, 240px);
   aspect-ratio: 1;
+  pointer-events: none;
+}
+.snowman-pet {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   border-radius: 32px;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: none;
+  pointer-events: auto;
+  user-select: none;
   -webkit-tap-highlight-color: transparent;
   /* Т-Банк: fast / productive-standard. */
   transition: transform 150ms cubic-bezier(0.2, 0, 0.4, 0.9);
 }
 
 .snowman-pet:active { transform: scale(0.96); }
+.snowman-dock[data-phase="held"] .snowman-pet { cursor: grabbing; transform: none; }
+.snowman-art { position: absolute; inset: 0; transition: transform 150ms cubic-bezier(0,0,0.4,0.9); }
+.snowman-dock:is([data-phase="held"],[data-phase="flying"]) .snowman-art { transform: translateY(-12px); }
+.snowman-dock[data-phase="landing"] .snowman-art { transition: transform 300ms cubic-bezier(0.2,0,1,1); }
+.snowman-dock[data-phase="landing"] .snowman-pet { transition: rotate 300ms cubic-bezier(0.2,0,1,1), transform 150ms cubic-bezier(0.2,0,0.4,0.9); }
 .snowman-pet:focus-visible { outline: 3px solid #428bf9; outline-offset: -18px; }
 .snowman-pet img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
 .snowfall { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1000; pointer-events: none; }
 .snowman-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .snowman-sound {
-  position: fixed;
-  z-index: 1002;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom));
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto;
   display: grid;
   place-items: center;
   width: 44px;
@@ -47,4 +61,6 @@
 @media (prefers-reduced-motion: reduce) {
   .snowman-pet { transition: none; }
   .snowman-pet:active { transform: none; }
+  .snowman-dock .snowman-art { transform: none !important; transition: none !important; }
+  .snowman-dock .snowman-pet { transition: none !important; }
 }
