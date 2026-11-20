@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { startSnowfall } from './snowfall';
 import { createPetAudio } from './pet-audio';
 import { attachPetDrag } from './pet-drag';
+import { createPetClips } from './pet-clips';
 
 const reactions = [
   { name: 'wave', label: 'Приветствие', duration: 4000 },
@@ -24,10 +25,11 @@ export function Snowman() {
   const drag = useRef(null);
   const dragCallbacks = useRef(null);
   const audio = useRef(null);
+  const clips = useRef(null);
   const [muted, setMuted] = useState(() => {
     try { return localStorage.getItem('snowman-muted') === 'true'; } catch { return false; }
   });
-  const runtime = useRef({ token: 0, next: 0, mode: null, timer: 0, url: null, blobs: new Map(), retired: new Set() });
+  const runtime = useRef({ token: 0, next: 0, mode: null, timer: 0, url: null, retired: new Set() });
   const [clip, setClip] = useState(null);
   const [outgoing, setOutgoing] = useState(null);
   const [snow, setSnow] = useState(null);
@@ -62,7 +64,15 @@ export function Snowman() {
     const sound = createPetAudio(import.meta.env.BASE_URL);
     sound.setMuted(muted);
     audio.current = sound;
+    const assets = createPetClips(import.meta.env.BASE_URL);
+    clips.current = assets;
     const preference = matchMedia('(prefers-reduced-motion: reduce)');
+    if (!preference.matches) {
+      // Сначала первый тап, затем наведение и захват; не загружаем весь цикл сразу.
+      void assets.preload(reactions[0].name)
+        .then(() => { if (!preference.matches) return assets.preload('idle'); })
+        .then(() => { if (!preference.matches) return assets.preload('held'); });
+    }
     const cancel = () => finish(runtime.current.token);
     const hidden = () => { if (document.hidden) cancel(); };
     preference.addEventListener('change', cancel);
@@ -70,6 +80,7 @@ export function Snowman() {
     return () => {
       clear();
       sound.dispose();
+      assets.dispose();
       preference.removeEventListener('change', cancel);
       document.removeEventListener('visibilitychange', hidden);
     };
@@ -128,13 +139,7 @@ export function Snowman() {
     }
 
     try {
-      let blob = r.blobs.get(reaction.name);
-      if (!blob) {
-        const response = await fetch(`${import.meta.env.BASE_URL}assets/pet/${reaction.name}.webp`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        blob = await response.blob();
-        r.blobs.set(reaction.name, blob);
-      }
+      const blob = await clips.current.load(reaction.name);
       if (token !== r.token) return;
       r.url = URL.createObjectURL(blob);
       setClip({ ...reaction, url: r.url, token, mode, ready: false });
@@ -157,7 +162,9 @@ export function Snowman() {
     if (clip.mode === 'tap') {
       r.next = (r.next + 1) % reactions.length;
       setStatus(clip.label);
+      void clips.current.preload(reactions[r.next].name);
     }
+    if (clip.name === 'held') void clips.current.preload('landing');
     if (clip.snow) beginSnow(clip.token, false);
     if (clip.name === 'landing') drag.current?.landingReady();
     if (clip.loop) return;
