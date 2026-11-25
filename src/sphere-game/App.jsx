@@ -47,10 +47,9 @@ export function App() {
   const [record, setRecord] = useState(() => readRecord(getStorage(), weekKey()));
   const [name, setName] = useState(() => readRecord(getStorage(), weekKey())?.name || 'Ты');
   const [notice, setNotice] = useState('');
-  const [holding, setHolding] = useState(false);
   const [menu, setMenu] = useState(null);
   const [reduceMotion, setReduceMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const canvas = useRef(null), holdTimer = useRef(null), saved = useRef(false), move = useRef({ x: 0, y: 0 });
+  const canvas = useRef(null), saved = useRef(false), move = useRef({ x: 0, y: 0 });
   const inputKeys = useRef(new Set()), stick = useRef(null);
   const board = leaderboard(record);
   const ownRow = board.find(r => r.me);
@@ -61,7 +60,7 @@ export function App() {
   const clearInput = () => { inputKeys.current.clear(); stick.current = null; move.current = { x: 0, y: 0 }; };
 
   function begin() {
-    clearTimeout(holdTimer.current); setHolding(false); setNotice(''); setMenu(null);
+    setNotice(''); setMenu(null);
     const currentWeek = weekKey(); setWeek(currentWeek); setRecord(readRecord(getStorage(), currentWeek));
     game.current = createGame(currentWeek); saved.current = false; clearInput();
     audio.current?.begin(game.current);
@@ -122,7 +121,7 @@ export function App() {
       if ((e.code === 'Escape' || e.code === 'KeyP') && game.current.status === 'playing') { e.preventDefault(); pause(); }
     };
     const keyup = e => inputKeys.current.delete(e.code);
-    const leave = () => { foreground.current = false; audio.current?.silence(); clearInput(); clearTimeout(holdTimer.current); setHolding(false); if (view === 'game') pause(); };
+    const leave = () => { foreground.current = false; audio.current?.silence(); clearInput(); if (view === 'game') pause(); };
     const focus = () => { foreground.current = !document.hidden; };
     const visibility = () => { if (document.hidden) leave(); else focus(); };
     window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
@@ -136,7 +135,7 @@ export function App() {
   useEffect(() => {
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const change = e => setReduceMotion(e.matches); media.addEventListener('change', change);
-    return () => { media.removeEventListener('change', change); clearTimeout(holdTimer.current); };
+    return () => media.removeEventListener('change', change);
   }, []);
 
   useEffect(() => {
@@ -160,12 +159,6 @@ export function App() {
     move.current = { x: dx / d, y: dy / d }; stick.current.dx = dx / d; stick.current.dy = dy / d;
   }
   function pointerEnd(e) { if (stick.current?.pointerId === e.pointerId) clearInput(); }
-  function hold(e) {
-    if (e.button !== 0) return;
-    audio.current?.prepare(); e.currentTarget.setPointerCapture(e.pointerId); setHolding(true);
-    holdTimer.current = setTimeout(begin, 850);
-  }
-  function cancelHold() { clearTimeout(holdTimer.current); setHolding(false); }
   async function copyResult() {
     try {
       await navigator.clipboard.writeText(`Я накопил ${format(hud.score)} искр в Saving Survivors за ${clock(hud.time)}. Сможешь больше?`);
@@ -186,9 +179,6 @@ export function App() {
     </canvas>
     {view === 'home' ? <section className="title-screen" aria-label="Главное меню">
       <div className="game-title"><h1><span>Saving</span>Survivors</h1></div>
-      <button className={`menu-hero ${holding ? 'holding' : ''}`} aria-label="Начать забег удержанием или клавишей Enter"
-        onPointerDown={hold} onPointerUp={cancelHold} onPointerCancel={cancelHold} onLostPointerCapture={cancelHold}
-        onClick={e => { if (e.detail === 0) begin(); }}><span className="hero-sprite" /></button>
       <nav className="main-menu" aria-label="Меню игры" onKeyDown={navigateMenu}>
         <button className="pixel-button primary" autoFocus onClick={begin}>ИГРАТЬ</button>
         <button className="pixel-button" onClick={() => setMenu('records')}>РЕКОРДЫ</button>

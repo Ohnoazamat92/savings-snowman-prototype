@@ -5,7 +5,7 @@ export function makeRenderer(canvas) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const hero = new Image(), items = new Image(), ground = new Image(), shield = new Image();
   const base = `${import.meta.env.BASE_URL}assets/sphere-game/`;
-  hero.src = `${base}snowman.webp`; items.src = `${base}items.png`; ground.src = `${base}ground-snow.png`;
+  hero.src = `${base}snowman-winter.png`; items.src = `${base}items.png`; ground.src = `${base}ground-snow.png`;
   shield.src = `${base}t-shield.png`;
   const heroAnimation = createHeroAnimator();
   let width = 0, height = 0;
@@ -91,7 +91,10 @@ export function makeRenderer(canvas) {
     if(game.upgrades.cushion)circle(p.x,p.y,27,'#d99baea0');
     const { row, frame } = heroAnimation(game, reduceMotion);
     ctx.globalAlpha=p.invulnerable>0?.65:1;
-    if(hero.complete&&hero.naturalWidth)ctx.drawImage(hero,frame*192,row*208,192,208,Math.round(p.x-36),Math.round(p.y-48),72,78);
+    if(hero.complete&&hero.naturalWidth){
+      const cellWidth=hero.naturalWidth/8,cellHeight=hero.naturalHeight/3;
+      ctx.drawImage(hero,frame*cellWidth,row*cellHeight,cellWidth,cellHeight,Math.round(p.x-48),Math.round(p.y-54),96,96);
+    }
     ctx.globalAlpha=1;
     ctx.fillStyle='#100d10';ctx.fillRect(Math.round(p.x-25),Math.round(p.y+34),50,9);
     ctx.fillStyle='#50312e';ctx.fillRect(Math.round(p.x-23),Math.round(p.y+36),46,5);
