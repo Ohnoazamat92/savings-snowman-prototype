@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { chooseUpgrade, createGame, DURATION, leaderboard, pauseGame, readRecord, resumeGame, saveRecord, snapshot, step, UPGRADES, weekKey } from './game.js';
 import { makeRenderer } from './renderer.js';
+import { createGameAudio, readAudioSettings, saveAudioSettings } from './audio.js';
 
 const format = value => Math.round(value).toLocaleString('ru-RU');
 const clock = value => `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
@@ -35,6 +36,10 @@ function GameDialog({ state, title, children, onCancel }) {
 
 export function App() {
   const game = useRef(null);
+  const audio = useRef(null);
+  const foreground = useRef(!document.hidden);
+  const [audioSettings, setAudioSettings] = useState(() => readAudioSettings(getStorage()));
+  const [audioError, setAudioError] = useState('');
   if (!game.current) game.current = createGame();
   const [view, setView] = useState('home');
   const [hud, setHud] = useState(() => snapshot(game.current));
@@ -59,13 +64,31 @@ export function App() {
     clearTimeout(holdTimer.current); setHolding(false); setNotice(''); setMenu(null);
     const currentWeek = weekKey(); setWeek(currentWeek); setRecord(readRecord(getStorage(), currentWeek));
     game.current = createGame(currentWeek); saved.current = false; clearInput();
+    audio.current?.begin(game.current);
     setView('game'); sync();
     requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true }));
   }
-  function pause() { pauseGame(game.current); clearInput(); sync(); }
-  function resume() { resumeGame(game.current); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
-  function home() { clearInput(); setView('home'); setMenu(null); game.current = createGame(); sync(); setNotice(''); }
-  function upgrade(id) { chooseUpgrade(game.current, id); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
+  function pause() { pauseGame(game.current); audio.current?.update(game.current, foreground.current && view === 'game'); clearInput(); sync(); }
+  function resume() { resumeGame(game.current); audio.current?.prepare(); audio.current?.update(game.current); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
+  function home() { audio.current?.silence(); clearInput(); setView('home'); setMenu(null); game.current = createGame(); sync(); setNotice(''); }
+  function upgrade(id) { chooseUpgrade(game.current, id); audio.current?.prepare(); audio.current?.update(game.current); audio.current?.effect('select'); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
+
+  useEffect(() => {
+    audio.current = createGameAudio(import.meta.env.BASE_URL, readAudioSettings(getStorage()), setAudioError);
+    return () => { audio.current?.dispose(); audio.current = null; };
+  }, []);
+
+  function changeAudio(key, value) {
+    const next = { ...audioSettings, [key]: value };
+    setAudioSettings(next); saveAudioSettings(getStorage(), next);
+    audio.current?.settings(next); audio.current?.prepare();
+  }
+  const audioControls = <fieldset className="audio-controls"><legend>ЗВУК</legend>
+    <label>Музыка <input aria-label="Громкость музыки" type="range" min="0" max="100" value={Math.round(audioSettings.music * 100)} onChange={e => changeAudio('music', Number(e.target.value) / 100)} /></label>
+    <label>Эффекты <input aria-label="Громкость эффектов" type="range" min="0" max="100" value={Math.round(audioSettings.effects * 100)} onChange={e => changeAudio('effects', Number(e.target.value) / 100)} onPointerUp={() => audio.current?.effect('collect')} onKeyUp={() => audio.current?.effect('collect')} /></label>
+    <button className="small-action" aria-pressed={audioSettings.muted} onClick={() => changeAudio('muted', !audioSettings.muted)}>{audioSettings.muted ? 'ВКЛЮЧИТЬ ЗВУК' : 'ВЫКЛЮЧИТЬ ЗВУК'}</button>
+    {audioError && <p className="notice" role="status">{audioError}</p>}
+  </fieldset>;
 
   useEffect(() => {
     const renderer = makeRenderer(canvas.current);
@@ -80,9 +103,10 @@ export function App() {
         const input = x || y ? { x, y } : move.current;
         accumulator += elapsed;
         const previous = game.current.status;
-        while (accumulator >= 1 / 60) { step(game.current, 1 / 60, input); accumulator -= 1 / 60; }
+        while (accumulator >= 1 / 60) { step(game.current, 1 / 60, input); audio.current?.update(game.current, foreground.current && !document.hidden); accumulator -= 1 / 60; }
         if (previous !== game.current.status || now - lastHud > 100) { setHud(snapshot(game.current)); lastHud = now; }
       } else accumulator = 0;
+      audio.current?.update(game.current, view === 'game' && foreground.current && !document.hidden);
       renderer.draw(game.current, { home: view === 'home', reduceMotion, joystick: stick.current });
       raf = requestAnimationFrame(frame);
     }
@@ -98,13 +122,14 @@ export function App() {
       if ((e.code === 'Escape' || e.code === 'KeyP') && game.current.status === 'playing') { e.preventDefault(); pause(); }
     };
     const keyup = e => inputKeys.current.delete(e.code);
-    const leave = () => { clearInput(); clearTimeout(holdTimer.current); setHolding(false); if (view === 'game') pause(); };
-    const visibility = () => { if (document.hidden) leave(); };
+    const leave = () => { foreground.current = false; audio.current?.silence(); clearInput(); clearTimeout(holdTimer.current); setHolding(false); if (view === 'game') pause(); };
+    const focus = () => { foreground.current = !document.hidden; };
+    const visibility = () => { if (document.hidden) leave(); else focus(); };
     window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
-    window.addEventListener('blur', leave); document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('blur', leave); window.addEventListener('focus', focus); document.addEventListener('visibilitychange', visibility);
     return () => {
       window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup);
-      window.removeEventListener('blur', leave); document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('blur', leave); window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', visibility);
     };
   }, [view]);
 
@@ -137,7 +162,7 @@ export function App() {
   function pointerEnd(e) { if (stick.current?.pointerId === e.pointerId) clearInput(); }
   function hold(e) {
     if (e.button !== 0) return;
-    e.currentTarget.setPointerCapture(e.pointerId); setHolding(true);
+    audio.current?.prepare(); e.currentTarget.setPointerCapture(e.pointerId); setHolding(true);
     holdTimer.current = setTimeout(begin, 850);
   }
   function cancelHold() { clearTimeout(holdTimer.current); setHolding(false); }
@@ -190,7 +215,7 @@ export function App() {
       <button className="pixel-button primary" onClick={() => setMenu(null)}>НАЗАД</button>
     </GameDialog>}
     {menu === 'controls' && <GameDialog state="controls" title="Управление" onCancel={() => setMenu(null)}>
-      <h2>УПРАВЛЕНИЕ</h2><dl className="controls-list"><div><dt>WASD / ← ↑ ↓ →</dt><dd>Движение</dd></div><div><dt>ПАЛЕЦ / МЫШЬ</dt><dd>Зажми и двигай</dd></div><div><dt>ESC / P</dt><dd>Пауза</dd></div></dl><p className="controls-rule">Атака — автоматически.<br />Собирай искры и выживи 3 минуты.</p><button className="pixel-button primary" onClick={() => setMenu(null)}>НАЗАД</button>
+      <h2>УПРАВЛЕНИЕ</h2><dl className="controls-list"><div><dt>WASD / ← ↑ ↓ →</dt><dd>Движение</dd></div><div><dt>ПАЛЕЦ / МЫШЬ</dt><dd>Зажми и двигай</dd></div><div><dt>ESC / P</dt><dd>Пауза</dd></div></dl><p className="controls-rule">Атака — автоматически.<br />Собирай искры и выживи 3 минуты.</p>{audioControls}<button className="pixel-button primary" onClick={() => setMenu(null)}>НАЗАД</button>
     </GameDialog>}
     {view === 'game' && hud.status === 'upgrade' && <GameDialog state="upgrade" title="Новый уровень">
       <h2>НОВЫЙ УРОВЕНЬ!</h2>
@@ -199,7 +224,7 @@ export function App() {
       </button>; })}</div>
     </GameDialog>}
     {view === 'game' && hud.status === 'paused' && <GameDialog state="paused" title="Пауза" onCancel={resume}>
-      <h2>ПАУЗА</h2><button className="pixel-button primary" autoFocus onClick={resume}>ПРОДОЛЖИТЬ</button><button className="pixel-button" onClick={begin}>ЗАНОВО</button><button className="pixel-button" onClick={home}>В МЕНЮ</button>
+      <h2>ПАУЗА</h2><button className="pixel-button primary" autoFocus onClick={resume}>ПРОДОЛЖИТЬ</button><button className="pixel-button" onClick={begin}>ЗАНОВО</button><button className="pixel-button" onClick={home}>В МЕНЮ</button>{audioControls}
     </GameDialog>}
     {view === 'game' && ['won', 'lost'].includes(hud.status) && <GameDialog state="result" title="Результат забега">
       <h2 className={hud.status === 'won' ? 'victory' : 'game-over'}>{hud.status === 'won' ? 'ПОБЕДА!' : 'КОНЕЦ ИГРЫ'}</h2>

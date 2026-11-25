@@ -1,5 +1,4 @@
 import page from "./page.html?raw";
-import { Snowman } from './Snowman';
 
 const markup = page.replaceAll('/assets/', `${import.meta.env.BASE_URL}assets/`);
 
@@ -10,5 +9,11 @@ export function App() {
       document.getElementById('choose-product')?.scrollIntoView();
     }
   }
-  return <><div onClick={handleClick} dangerouslySetInnerHTML={{ __html: markup }} /><Snowman /></>;
+  return <>
+    <div onClick={handleClick} dangerouslySetInnerHTML={{ __html: markup }} />
+    <a className="sphere-game-entry" href={`${import.meta.env.BASE_URL}sphere-game.html`}
+      aria-label="Снеговичок: открыть игру «Внутри Сферы»" title="Играть во «Внутри Сферы»">
+      <span className="sphere-game-entry-sprite" aria-hidden="true" />
+    </a>
+  </>;
 }
