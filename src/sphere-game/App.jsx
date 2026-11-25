@@ -168,7 +168,7 @@ export function App() {
   function cancelHold() { clearTimeout(holdTimer.current); setHolding(false); }
   async function copyResult() {
     try {
-      await navigator.clipboard.writeText(`Я накопил ${format(hud.score)} искр внутри Сферы за ${clock(hud.time)}. Сможешь больше?`);
+      await navigator.clipboard.writeText(`Я накопил ${format(hud.score)} искр в Saving Survivors за ${clock(hud.time)}. Сможешь больше?`);
       setNotice('Результат скопирован');
     } catch { setNotice(`Скопируй результат: ${format(hud.score)} искр за ${clock(hud.time)}.`); }
   }
@@ -179,13 +179,13 @@ export function App() {
     else setNotice('Не удалось сохранить имя в браузере.');
   }
 
-  return <main className={`game-screen view-${view}`} aria-label="Внутри Сферы">
+  return <main className={`game-screen view-${view}`} aria-label="Saving Survivors">
     <canvas ref={canvas} tabIndex={view === 'game' ? 0 : -1} aria-label="Игровое поле. Управление: WASD, стрелки или движение пальцем. Пауза: Escape."
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onLostPointerCapture={pointerEnd}>
       Для игры нужен браузер с поддержкой Canvas.
     </canvas>
     {view === 'home' ? <section className="title-screen" aria-label="Главное меню">
-      <div className="game-title"><span>ВНУТРИ</span><h1>СФЕРЫ</h1></div>
+      <div className="game-title"><h1><span>Saving</span>Survivors</h1></div>
       <button className={`menu-hero ${holding ? 'holding' : ''}`} aria-label="Начать забег удержанием или клавишей Enter"
         onPointerDown={hold} onPointerUp={cancelHold} onPointerCancel={cancelHold} onLostPointerCapture={cancelHold}
         onClick={e => { if (e.detail === 0) begin(); }}><span className="hero-sprite" /></button>
