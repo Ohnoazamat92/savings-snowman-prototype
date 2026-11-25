@@ -11,6 +11,9 @@
   aspect-ratio: 192 / 208;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  /* Т-Банк: slow / productive-entrance, затем slow / expressive-entrance. */
+  animation: snowman-peek 500ms cubic-bezier(0, 0, 0.4, 0.9) 300ms both,
+    snowman-arrive 500ms cubic-bezier(0.35, 1.3, 0.25, 1) 1500ms forwards;
 }
 .sphere-game-entry-sprite {
   display: block;
@@ -18,6 +21,29 @@
   height: 100%;
   background: url('/assets/sphere-game/snowman.webp') 0 0 / 800% 1100% no-repeat;
   image-rendering: pixelated;
+  animation: snowman-blink 5s step-end 2s infinite;
+}
+.sphere-game-entry:focus-visible { animation: none; transform: none; }
+.sphere-game-entry:focus-visible .sphere-game-entry-sprite { animation-play-state: paused; }
+@media (hover: hover) and (pointer: fine) {
+  .sphere-game-entry:hover .sphere-game-entry-sprite { animation-play-state: paused; }
+}
+@keyframes snowman-peek {
+  from { transform: translateY(calc(100% + 24px)); }
+  to { transform: translateY(54%); }
+}
+@keyframes snowman-arrive {
+  from { transform: translateY(54%); }
+  to { transform: translateY(0); }
+}
+/* Шесть кадров idle: исходные 110/110/140/140/320 мс, с длинной спокойной паузой. */
+@keyframes snowman-blink {
+  0%, 100% { background-position: 0 0; }
+  83.8% { background-position: 14.285714% 0; }
+  86% { background-position: 28.571429% 0; }
+  88.2% { background-position: 42.857143% 0; }
+  91% { background-position: 57.142857% 0; }
+  93.8% { background-position: 71.428571% 0; }
 }
 .sphere-game-entry:focus-visible { outline: 3px solid #428bf9; outline-offset: 4px; }
 @media (max-width: 600px) { .sphere-game-entry { width: 144px; } }
@@ -80,6 +106,7 @@
 .snowman-sound:focus-visible { outline: 3px solid #428bf9; outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
+  .sphere-game-entry, .sphere-game-entry-sprite { animation: none; }
   .snowman-pet { transition: none; }
   .snowman-pet:active { transform: none; }
   .snowman-dock .snowman-art { transform: none !important; transition: none !important; }
