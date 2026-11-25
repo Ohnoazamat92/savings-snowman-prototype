@@ -21,12 +21,14 @@
   height: 100%;
   background: url('/assets/sphere-game/snowman-winter.png') 0 0 / 800% 300% no-repeat;
   image-rendering: pixelated;
-  animation: snowman-blink 5s step-end 2s infinite;
+  transform-origin: 50% 85%;
+  animation: snowman-blink 3.2s step-end 2s infinite,
+    snowman-breathe 1400ms cubic-bezier(0.4, 0.1, 0.2, 1) 2s infinite alternate;
 }
 .sphere-game-entry:focus-visible { animation: none; transform: none; }
-.sphere-game-entry:focus-visible .sphere-game-entry-sprite { animation-play-state: paused; }
+.sphere-game-entry:focus-visible .sphere-game-entry-sprite { animation-play-state: running, paused; }
 @media (hover: hover) and (pointer: fine) {
-  .sphere-game-entry:hover .sphere-game-entry-sprite { animation-play-state: paused; }
+  .sphere-game-entry:hover .sphere-game-entry-sprite { animation-play-state: running, paused; }
 }
 @keyframes snowman-peek {
   from { transform: translateY(calc(100% + 24px)); }
@@ -39,11 +41,15 @@
 /* Шесть кадров idle: исходные 110/110/140/140/320 мс, с длинной спокойной паузой. */
 @keyframes snowman-blink {
   0%, 100% { background-position: 0 0; }
-  83.8% { background-position: 14.285714% 0; }
-  86% { background-position: 28.571429% 0; }
-  88.2% { background-position: 42.857143% 0; }
-  91% { background-position: 57.142857% 0; }
-  93.8% { background-position: 71.428571% 0; }
+  74.6875% { background-position: 14.285714% 0; }
+  78.125% { background-position: 28.571429% 0; }
+  81.5625% { background-position: 42.857143% 0; }
+  85.9375% { background-position: 57.142857% 0; }
+  90.3125% { background-position: 71.428571% 0; }
+}
+@keyframes snowman-breathe {
+  from { transform: scale(1); }
+  to { transform: scale(1.015, 1.025); }
 }
 .sphere-game-entry:focus-visible { outline: 3px solid #428bf9; outline-offset: 4px; }
 @media (max-width: 600px) { .sphere-game-entry { width: 168px; } }

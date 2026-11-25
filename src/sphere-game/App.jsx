@@ -13,7 +13,7 @@ function ItemIcon({ id, className = '' }) {
 }
 function navigateMenu(event) {
   if (!['ArrowDown', 'ArrowUp'].includes(event.code) || event.target.tagName === 'INPUT') return;
-  const buttons = [...event.currentTarget.querySelectorAll('button')].filter(button => !button.disabled && button.getClientRects().length);
+  const buttons = [...event.currentTarget.querySelectorAll('button, a[href]')].filter(button => !button.disabled && button.getClientRects().length);
   if (!buttons.length) return;
   event.preventDefault();
   const index = buttons.indexOf(document.activeElement);
@@ -183,6 +183,7 @@ export function App() {
         <button className="pixel-button primary" autoFocus onClick={begin}>ИГРАТЬ</button>
         <button className="pixel-button" onClick={() => setMenu('records')}>РЕКОРДЫ</button>
         <button className="pixel-button" onClick={() => setMenu('controls')}>УПРАВЛЕНИЕ</button>
+        <a className="pixel-button" href={`${import.meta.env.BASE_URL}index.html`}>НА САЙТ</a>
       </nav>
       {record && <p className="menu-best">РЕКОРД <span>{format(record.score)}</span></p>}
     </section> : <>
