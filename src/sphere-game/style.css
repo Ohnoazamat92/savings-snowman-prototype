@@ -16,3 +16,4 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.pixel-button:active{transform:none}}
 
 .audio-controls{border:0;border-top:2px solid #544d58;padding:14px 0 0;margin:24px 0 0;text-align:left;min-width:0}.audio-controls legend{padding:0 10px;color:#dcc780;font-size:17px;text-align:center}.audio-controls label{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:18px;min-height:44px}.audio-controls input{width:55%;min-width:0;min-height:44px;accent-color:#e4c47c;cursor:pointer}.audio-controls .small-action{width:100%;font-size:14px}
+.item-icon.shield-icon{background-image:url('/assets/sphere-game/t-shield.png');background-size:contain;background-repeat:no-repeat}

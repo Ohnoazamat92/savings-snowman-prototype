@@ -3,9 +3,10 @@ import { createHeroAnimator } from './hero-animation.js';
 
 export function makeRenderer(canvas) {
   const ctx = canvas.getContext('2d', { alpha: false });
-  const hero = new Image(), items = new Image(), ground = new Image();
+  const hero = new Image(), items = new Image(), ground = new Image(), shield = new Image();
   const base = `${import.meta.env.BASE_URL}assets/sphere-game/`;
   hero.src = `${base}snowman.webp`; items.src = `${base}items.png`; ground.src = `${base}ground-snow.png`;
+  shield.src = `${base}t-shield.png`;
   const heroAnimation = createHeroAnimator();
   let width = 0, height = 0;
   // Половинное разрешение даёт общую пиксельную сетку спрайтам и эффектам.
@@ -16,6 +17,10 @@ export function makeRenderer(canvas) {
     ctx.imageSmoothingEnabled = false;
   }
   function sprite(index, x, y, w, h = w) {
+    if (index === 0) {
+      if (shield.complete && shield.naturalWidth) ctx.drawImage(shield, Math.round(x - w / 2), Math.round(y - h / 2), w, h);
+      return;
+    }
     if (!items.complete || !items.naturalWidth) return;
     const sw = items.naturalWidth / 4, sh = items.naturalHeight / 4;
     ctx.drawImage(items, index % 4 * sw, Math.floor(index / 4) * sh, sw, sh, Math.round(x - w / 2), Math.round(y - h / 2), w, h);

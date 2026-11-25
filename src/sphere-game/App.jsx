@@ -9,7 +9,7 @@ const getStorage = () => { try { return window.localStorage; } catch { return nu
 const ICONS = { orbit: 0, bolt: 1, magnet: 2, chain: 3, cushion: 4, speed: 5, gem: 6, coin: 7 };
 function ItemIcon({ id, className = '' }) {
   const index = ICONS[id] ?? 0;
-  return <span aria-hidden="true" className={`item-icon ${className}`} style={{ backgroundPosition: `${index % 4 / 3 * 100}% ${Math.floor(index / 4) / 3 * 100}%` }} />;
+  return <span aria-hidden="true" className={`item-icon ${id === 'orbit' ? 'shield-icon' : ''} ${className}`} style={{ backgroundPosition: `${index % 4 / 3 * 100}% ${Math.floor(index / 4) / 3 * 100}%` }} />;
 }
 function navigateMenu(event) {
   if (!['ArrowDown', 'ArrowUp'].includes(event.code) || event.target.tagName === 'INPUT') return;
