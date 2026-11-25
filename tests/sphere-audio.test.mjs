@@ -41,7 +41,7 @@ test('звук следует событиям игры, не повторяет
   try {
     const defaults = readAudioSettings(null), errors = [];
     const audio = createGameAudio('/nested/', defaults, error => errors.push(error));
-    assert.equal(media[0].src, '/nested/assets/sphere-game/audio/frost-battle.mp3');
+    assert.equal(media[0].src, '/nested/assets/sphere-game/audio/frost-battle-loop.mp3');
     assert.equal(media[0].paused, true); assert.equal(contexts.length, 0, 'до жеста нет контекста и автозапуска');
     const run = createGame('controller'); audio.update(run, false); audio.begin(run);
     assert.equal(media[0].paused, false); assert.equal(media[0].loop, true);

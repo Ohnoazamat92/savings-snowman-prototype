@@ -27,7 +27,8 @@ export function createSoundObserver() {
 }
 
 export function createGameAudio(baseURL, settings, onError = () => {}) {
-  const music = new Audio(`${baseURL}assets/sphere-game/audio/frost-battle.mp3`);
+  // В файле конец сведён с началом; нативный loop повторяет его весь забег.
+  const music = new Audio(`${baseURL}assets/sphere-game/audio/frost-battle-loop.mp3`);
   music.preload = 'auto'; music.loop = true;
   music.onerror = () => onError('Музыка не загрузилась. Обнови страницу, чтобы попробовать снова.');
   const observe = createSoundObserver(), voices = new Set(), lastSound = new Map();
