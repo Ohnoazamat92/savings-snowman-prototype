@@ -5,6 +5,7 @@ export default defineConfig({
   base: './',
   build: {
     outDir: "dist/client",
+    rollupOptions: { input: ['index.html', 'wish-tree.html', 'sphere-game.html'] },
   },
   optimizeDeps: {
     include: ["react", "react-dom/client"],
