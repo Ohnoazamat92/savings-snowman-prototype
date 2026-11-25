@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { chooseUpgrade, createGame, DURATION, leaderboard, pauseGame, readRecord, resumeGame, saveRecord, snapshot, step, UPGRADES, weekKey } from './game.js';
 import { makeRenderer } from './renderer.js';
 import { createGameAudio, readAudioSettings, saveAudioSettings } from './audio.js';
+import { challengeUrl, readChallenge, shareChallenge, shareIsPrimary } from './challenge.js';
 
 const format = value => Math.round(value).toLocaleString('ru-RU');
 const clock = value => `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`;
@@ -38,6 +39,7 @@ export function App() {
   const game = useRef(null);
   const audio = useRef(null);
   const foreground = useRef(!document.hidden);
+  const [challenge, setChallenge] = useState(() => readChallenge(window.location.hash));
   const [audioSettings, setAudioSettings] = useState(() => readAudioSettings(getStorage()));
   const [audioError, setAudioError] = useState('');
   if (!game.current) game.current = createGame();
@@ -46,13 +48,18 @@ export function App() {
   const [week, setWeek] = useState(weekKey);
   const [record, setRecord] = useState(() => readRecord(getStorage(), weekKey()));
   const [name, setName] = useState(() => readRecord(getStorage(), weekKey())?.name || 'Ты');
-  const [notice, setNotice] = useState('');
-  const [menu, setMenu] = useState(null);
+  const [notice, setNotice] = useState(() => window.location.hash.includes('challenge=') && !challenge ? 'Ссылка вызова повреждена или устарела. Можно начать обычную игру.' : '');
+  const [menu, setMenu] = useState(challenge ? 'challenge' : null);
+  const [manualShare, setManualShare] = useState('');
+  const [sharing, setSharing] = useState(false);
+  const previousBest = useRef(record?.score || 0);
   const [reduceMotion, setReduceMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const canvas = useRef(null), saved = useRef(false), move = useRef({ x: 0, y: 0 });
   const inputKeys = useRef(new Set()), stick = useRef(null);
   const board = leaderboard(record);
   const ownRow = board.find(r => r.me);
+  const sharePrimary = shareIsPrimary(hud, previousBest.current, challenge);
+  const bestUpgrades = UPGRADES.filter(u => hud.upgrades[u.id]).sort((a, b) => hud.upgrades[b.id] - hud.upgrades[a.id]).slice(0, 3);
   const startDate = new Date(`${week}T12:00:00+03:00`);
   const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 6);
   const period = `${startDate.getDate()}–${endDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`;
@@ -60,8 +67,10 @@ export function App() {
   const clearInput = () => { inputKeys.current.clear(); stick.current = null; move.current = { x: 0, y: 0 }; };
 
   function begin() {
-    setNotice(''); setMenu(null);
-    const currentWeek = weekKey(); setWeek(currentWeek); setRecord(readRecord(getStorage(), currentWeek));
+    setNotice(''); setManualShare(''); setMenu(null);
+    const currentWeek = challenge?.seed || weekKey();
+    const currentRecord = readRecord(getStorage(), currentWeek);
+    setWeek(currentWeek); setRecord(currentRecord); previousBest.current = currentRecord?.score || 0;
     game.current = createGame(currentWeek); saved.current = false; clearInput();
     audio.current?.begin(game.current);
     setView('game'); sync();
@@ -69,12 +78,27 @@ export function App() {
   }
   function pause() { pauseGame(game.current); audio.current?.update(game.current, foreground.current && view === 'game'); clearInput(); sync(); }
   function resume() { resumeGame(game.current); audio.current?.prepare(); audio.current?.update(game.current); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
-  function home() { audio.current?.silence(); clearInput(); setView('home'); setMenu(null); game.current = createGame(); sync(); setNotice(''); }
+  function home() { audio.current?.silence(); clearInput(); setView('home'); setMenu(challenge ? 'challenge' : null); game.current = createGame(); sync(); setNotice(''); setManualShare(''); }
+  function dismissChallenge() {
+    setChallenge(null); setMenu(null); setNotice('');
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
   function upgrade(id) { chooseUpgrade(game.current, id); audio.current?.prepare(); audio.current?.update(game.current); audio.current?.effect('select'); clearInput(); sync(); requestAnimationFrame(() => canvas.current?.focus({ preventScroll: true })); }
 
   useEffect(() => {
     audio.current = createGameAudio(import.meta.env.BASE_URL, readAudioSettings(getStorage()), setAudioError);
     return () => { audio.current?.dispose(); audio.current = null; };
+  }, []);
+
+  useEffect(() => {
+    const openChallenge = () => {
+      const next = readChallenge(window.location.hash);
+      audio.current?.silence(); clearInput(); game.current = createGame(); sync();
+      setChallenge(next); setView('home'); setMenu(next ? 'challenge' : null); setManualShare('');
+      setNotice(window.location.hash.includes('challenge=') && !next ? 'Ссылка вызова повреждена или устарела. Можно начать обычную игру.' : '');
+    };
+    window.addEventListener('hashchange', openChallenge);
+    return () => window.removeEventListener('hashchange', openChallenge);
   }, []);
 
   function changeAudio(key, value) {
@@ -159,11 +183,17 @@ export function App() {
     move.current = { x: dx / d, y: dy / d }; stick.current.dx = dx / d; stick.current.dy = dy / d;
   }
   function pointerEnd(e) { if (stick.current?.pointerId === e.pointerId) clearInput(); }
-  async function copyResult() {
+  async function sendChallenge(event, copyOnly = false) {
+    if (sharing) return;
+    setSharing(true); setNotice(''); setManualShare('');
     try {
-      await navigator.clipboard.writeText(`Я накопил ${format(hud.score)} искр в Saving Survivors за ${clock(hud.time)}. Сможешь больше?`);
-      setNotice('Результат скопирован');
-    } catch { setNotice(`Скопируй результат: ${format(hud.score)} искр за ${clock(hud.time)}.`); }
+      const url = challengeUrl(window.location.href, { seed: game.current.seed, name, score: hud.score, time: hud.time });
+      const data = { title: 'Saving Survivors — вызов другу', text: `Нашёл снежный рогалик в накоплениях ❄️\nМой результат — ${format(hud.score)} искр за ${clock(hud.time)}. Побьёшь?`, url };
+      const outcome = await shareChallenge(copyOnly ? { clipboard: navigator.clipboard } : navigator, data);
+      if (outcome === 'copied') { setManualShare(url); setNotice('Вызов со ссылкой скопирован. Отправь его другу.'); }
+      if (outcome === 'manual') { setManualShare(url); setNotice('Не удалось скопировать. Выдели ссылку и отправь её другу.'); }
+    } catch { setNotice('Не удалось создать вызов. Попробуй ещё раз.'); }
+    finally { setSharing(false); }
   }
   function updateName(e) {
     e.preventDefault();
@@ -186,6 +216,7 @@ export function App() {
         <a className="pixel-button" href={`${import.meta.env.BASE_URL}index.html`}>НА САЙТ</a>
       </nav>
       {record && <p className="menu-best">РЕКОРД <span>{format(record.score)}</span></p>}
+      {notice && <p className="home-notice" role="status">{notice}</p>}
     </section> : <>
       <div className="xp-bar"><progress value={hud.xp} max={hud.nextXp} aria-label="Опыт до следующего уровня" /><span>УР. {hud.level}</span></div>
       <div className="game-hud">
@@ -199,6 +230,14 @@ export function App() {
       {hud.time < 5 && <p className="start-hint"><span className="keyboard-hint">WASD / СТРЕЛКИ</span><span className="touch-hint">ДВИГАЙ ПАЛЬЦЕМ ПО ПОЛЮ</span></p>}
       {hud.time >= 150 && hud.time < 154 && <p className="wave-warning">ПОСЛЕДНЯЯ ВОЛНА</p>}
     </>}
+    {menu === 'challenge' && challenge && <GameDialog state="challenge" title="Вызов друга" onCancel={dismissChallenge}>
+      <h2>ТЕБЕ БРОСИЛИ ВЫЗОВ</h2>
+      <p className="challenge-name">{challenge.name}</p>
+      <div className="result-score"><ItemIcon id="gem" />{format(challenge.score)}</div>
+      <p className="challenge-caption">Результат за {clock(challenge.time)}.<br />Собери больше искр в том же сценарии.</p>
+      <button className="pixel-button primary" onClick={begin}>ПОБИТЬ РЕЗУЛЬТАТ</button>
+      <button className="small-action" onClick={dismissChallenge}>ОБЫЧНАЯ ИГРА</button>
+    </GameDialog>}
     {menu === 'records' && <GameDialog state="records" title="Рекорды недели" onCancel={() => setMenu(null)}>
       <h2>РЕКОРДЫ</h2><p className="menu-period">{period}</p>
       <ol className="ranking">{board.map(row => <li key={row.me ? 'me' : row.name} className={row.me ? 'my-row' : ''}><span className="rank">{String(row.rank).padStart(2, '0')}</span><span className="rank-name">{row.name}{row.me && <small>ТЫ</small>}</span><strong>{format(row.score)}</strong></li>)}</ol>
@@ -219,13 +258,18 @@ export function App() {
     </GameDialog>}
     {view === 'game' && ['won', 'lost'].includes(hud.status) && <GameDialog state="result" title="Результат забега">
       <h2 className={hud.status === 'won' ? 'victory' : 'game-over'}>{hud.status === 'won' ? 'ПОБЕДА!' : 'КОНЕЦ ИГРЫ'}</h2>
-      <div className="result-score"><ItemIcon id="gem" />{format(hud.score)}</div>
+      <div className="result-trophy"><span className="result-snowman" aria-hidden="true" /><div className="result-score"><ItemIcon id="gem" />{format(hud.score)}</div></div>
       <p className="result-summary">{clock(hud.time)}<span>·</span>УРОВЕНЬ {hud.level}<span>·</span>ВРАГИ: {hud.kills}</p>
-      {ownRow && <p className="result-ranking">МЕСТО {ownRow.rank} <span>/ РЕКОРД {format(record.score)}</span></p>}
-      <button className="pixel-button primary" autoFocus onClick={begin}>ЕЩЁ РАЗ</button>
+      {bestUpgrades.length > 0 && <div className="result-build" aria-label="Сильнейшие улучшения">{bestUpgrades.map(u => <span key={u.id} title={u.name} aria-label={`${u.name}: уровень ${hud.upgrades[u.id]}`}><ItemIcon id={u.id} /><b>{hud.upgrades[u.id]}</b></span>)}</div>}
+      {challenge ? <p className="result-comparison"><span>{challenge.name}: {format(challenge.score)}</span><strong>{hud.score > challenge.score ? `Больше на ${format(hud.score - challenge.score)}!` : hud.score === challenge.score ? 'Ничья!' : `До победы: ${format(challenge.score - hud.score + 1)}`}</strong></p>
+        : ownRow && <p className="result-ranking">{hud.score > previousBest.current ? 'НОВЫЙ РЕКОРД!' : `РЕКОРД ${format(record.score)}`}</p>}
+      {sharePrimary && <button className="pixel-button primary" disabled={sharing} onClick={sendChallenge}>{challenge && hud.score > challenge.score ? 'ПОЗВАТЬ НА РЕВАНШ' : 'БРОСИТЬ ВЫЗОВ'}</button>}
+      <button className={`pixel-button ${sharePrimary ? '' : 'primary'}`} onClick={begin}>ЕЩЁ РАЗ</button>
+      {!sharePrimary && <button className="pixel-button" disabled={sharing} onClick={sendChallenge}>БРОСИТЬ ВЫЗОВ</button>}
       <button className="pixel-button" onClick={home}>В МЕНЮ</button>
-      <details className="result-details"><summary>ИМЯ И РЕЗУЛЬТАТ</summary><form className="name-form" onSubmit={updateName}><label className="sr-only" htmlFor="player-name">Имя в таблице</label><input id="player-name" value={name} maxLength={20} onChange={e => setName(e.target.value)} autoComplete="nickname" /><button className="pixel-button" type="submit">ОК</button></form><button className="small-action" onClick={copyResult}>СКОПИРОВАТЬ РЕЗУЛЬТАТ</button></details>
+      <details className="result-details"><summary>ИМЯ И ССЫЛКА</summary><form className="name-form" onSubmit={updateName}><label className="sr-only" htmlFor="player-name">Имя в вызове и таблице</label><input id="player-name" value={name} maxLength={20} onChange={e => setName(e.target.value)} autoComplete="nickname" /><button className="pixel-button" type="submit">ОК</button></form><button className="small-action" disabled={sharing} onClick={event => sendChallenge(event, true)}>СКОПИРОВАТЬ ВЫЗОВ</button></details>
       <p className="notice" role="status">{notice}</p>
+      {manualShare && <label className="manual-share">Ссылка вызова<textarea readOnly value={manualShare} onFocus={e => e.target.select()} /></label>}
     </GameDialog>}
   </main>;
 }

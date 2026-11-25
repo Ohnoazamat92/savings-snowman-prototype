@@ -18,3 +18,19 @@
 
 .audio-controls{border:0;border-top:2px solid #544d58;padding:14px 0 0;margin:24px 0 0;text-align:left;min-width:0}.audio-controls legend{padding:0 10px;color:#dcc780;font-size:17px;text-align:center}.audio-controls label{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:18px;min-height:44px}.audio-controls input{width:55%;min-width:0;min-height:44px;accent-color:#e4c47c;cursor:pointer}.audio-controls .small-action{width:100%;font-size:14px}
 .item-icon.shield-icon{background-image:url('/assets/sphere-game/t-shield.png');background-size:contain;background-repeat:no-repeat}
+.challenge-name{font-size:25px;color:#f5e7be;margin-bottom:12px;overflow-wrap:anywhere}
+.challenge-caption{font-size:18px;line-height:1.4;color:#c3bfca;margin-bottom:20px}
+.dialog-challenge h2{font-size:30px}.dialog-challenge .small-action{margin-top:12px}
+.home-notice{max-width:360px;text-align:center;font-size:17px;line-height:1.4;margin-top:20px;color:#f1d593}
+.result-trophy{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:-18px}
+.result-snowman{display:block;flex:none;width:80px;height:80px;background:url('/assets/sphere-game/snowman-winter.png') 0 0/800% 300% no-repeat;image-rendering:pixelated}
+.result-trophy .result-score{font-size:48px;margin:0}.result-trophy .item-icon{width:36px;height:36px}
+.result-build{display:flex;justify-content:center;gap:12px;margin:10px 0}
+.result-build>span{position:relative;display:block}.result-build .item-icon{width:36px;height:36px}
+.result-build b{position:absolute;right:0;bottom:0;font-size:14px;color:#f1d593;text-shadow:1px 1px #000}
+.result-comparison{margin:14px 0 20px;font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.result-comparison span{display:block;color:#b5b1ba}.result-comparison strong{display:block;font-size:23px;color:#f4db9d}
+.dialog-result .result-ranking{margin:14px 0 20px}.dialog-result .result-details{margin-top:14px}
+.manual-share{display:block;text-align:left;margin-top:15px;font-size:16px}.manual-share textarea{display:block;width:100%;min-height:88px;margin-top:8px;background:#0e1020;color:#f4e8c4;border:2px solid #8e7a58;padding:8px;font:14px monospace;resize:vertical}.manual-share textarea:focus-visible{outline:3px solid #fff1a5;outline-offset:3px}
+.pixel-button:disabled{opacity:.6;cursor:wait}
+@media(max-width:380px){.result-snowman{width:56px;height:56px}.result-trophy .result-score{font-size:40px}.dialog-result>.pixel-button{font-size:18px}.dialog-challenge h2{font-size:25px}}

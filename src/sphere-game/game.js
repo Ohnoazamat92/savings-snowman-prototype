@@ -31,7 +31,7 @@ export function seeded(seed) {
 export function createGame(seed = weekKey()) {
   const random = seeded(seed);
   const game = {
-    random, choiceRandom: seeded(`${seed}-choices`), status: 'playing', time: 0, score: 0,
+    seed, random, choiceRandom: seeded(`${seed}-choices`), status: 'playing', time: 0, score: 0,
     player: { x: 0, y: 0, hp: 100, invulnerable: 0, facing: 1 },
     level: 1, xp: 0, nextXp: 6, kills: 0, collected: 0, wave: 1,
     upgrades: Object.fromEntries(UPGRADES.map(u => [u.id, 0])), choices: [],
