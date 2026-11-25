@@ -207,16 +207,16 @@ export function App() {
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onLostPointerCapture={pointerEnd}>
       Для игры нужен браузер с поддержкой Canvas.
     </canvas>
-    {view === 'home' ? <section className="title-screen" aria-label="Главное меню">
+    {view === 'home' ? <section className="title-screen" aria-label="Главное меню" onKeyDown={navigateMenu}>
       <div className="game-title"><h1><span>Saving</span>Survivors</h1></div>
-      <nav className="main-menu" aria-label="Меню игры" onKeyDown={navigateMenu}>
+      <nav className="main-menu" aria-label="Меню игры">
         <button className="pixel-button primary" autoFocus onClick={begin}>ИГРАТЬ</button>
         <button className="pixel-button" onClick={() => setMenu('records')}>РЕКОРДЫ</button>
         <button className="pixel-button" onClick={() => setMenu('controls')}>УПРАВЛЕНИЕ</button>
-        <a className="pixel-button" href={`${import.meta.env.BASE_URL}index.html`}>НА САЙТ</a>
       </nav>
       {record && <p className="menu-best">РЕКОРД <span>{format(record.score)}</span></p>}
       {notice && <p className="home-notice" role="status">{notice}</p>}
+      <a className="pixel-button menu-exit" href={`${import.meta.env.BASE_URL}index.html`}>ВЫЙТИ ИЗ ИГРЫ</a>
     </section> : <>
       <div className="xp-bar"><progress value={hud.xp} max={hud.nextXp} aria-label="Опыт до следующего уровня" /><span>УР. {hud.level}</span></div>
       <div className="game-hud">
@@ -224,7 +224,7 @@ export function App() {
           {hud.upgrades[u.id] > 0 && <><ItemIcon id={u.id} /><span>{hud.upgrades[u.id]}</span></>}
         </div>)}</div>
         <time className={`run-timer ${hud.time >= 150 ? 'danger' : ''}`} aria-label="Осталось времени">{clock(Math.ceil(DURATION - hud.time))}</time>
-        <div className="hud-right"><span className="spark-score" aria-label={`${hud.score} искр`}><ItemIcon id="gem" />{format(hud.score)}</span><button className="pixel-button pause-button" onClick={pause} aria-label="Пауза"><span aria-hidden="true">Ⅱ</span></button></div>
+        <div className="hud-right"><span className="spark-score" aria-label={`${hud.score} искр`}><ItemIcon id="gem" />{format(hud.score)}</span><div className="hud-actions"><button className="pixel-button pause-button" onClick={pause} aria-label="Пауза"><span aria-hidden="true">Ⅱ</span></button><a className="pixel-button pause-button" href={`${import.meta.env.BASE_URL}index.html`} aria-label="Выйти из игры на сайт" title="Выйти из игры"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 3 13 13M13 3 3 13" stroke="currentColor" strokeWidth="3" /></svg></a></div></div>
       </div>
       <meter className="sr-only" min="0" max="100" value={hud.hp} aria-label="Здоровье" />
       {hud.time < 5 && <p className="start-hint"><span className="keyboard-hint">WASD / СТРЕЛКИ</span><span className="touch-hint">ДВИГАЙ ПАЛЬЦЕМ ПО ПОЛЮ</span></p>}
