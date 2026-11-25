@@ -1,5 +1,6 @@
 /* Исходная вёрстка лендинга остаётся в source.css. */
 #choose-product { scroll-margin-top: 80px; }
+.application a[aria-disabled="true"] { cursor: default; }
 
 .sphere-game-entry {
   position: fixed;
